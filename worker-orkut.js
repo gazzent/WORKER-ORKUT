@@ -188,12 +188,12 @@ const swaggerJSON = {
                   USER_ORKUT: { 
                     type: "string", 
                     description: "Username Orkut",
-                    example: "arivpnstore" 
+                    example: "ariXXXX" 
                   },
                   TOKEN_ORKUT: { 
                     type: "string", 
                     description: "Token akses (format: merchant_id:token)",
-                    example: "1540779:aRe0G9Els1AXIgUoOqPBfukV3y8cNvZL" 
+                    example: "1540779:aRe0G9Els1AXIgUoOqPBfukV3yXXXXX" 
                   },
                   jenis: { 
                     type: "string", 
@@ -249,8 +249,8 @@ const swaggerJSON = {
                 type: "object",
                 required: ["USER_ORKUT", "TOKEN_ORKUT", "amount"],
                 properties: {
-                  USER_ORKUT: { type: "string", example: "arivpnstore" },
-                  TOKEN_ORKUT: { type: "string", example: "1540779:aRe0G9Els1AXIgUoOqPBfukV3y8cNvZL" },
+                  USER_ORKUT: { type: "string", example: "ariXXXX" },
+                  TOKEN_ORKUT: { type: "string", example: "1540779:aRe0G9Els1AXIgUoOqPBfukV3yXXXXX" },
                   amount: { type: "string", example: "1000" }
                 }
               }
