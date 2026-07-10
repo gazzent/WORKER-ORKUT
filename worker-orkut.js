@@ -1,4 +1,4 @@
-// DIBUAT OLEH DRAGON STORE (Unofficial QRIS Generator)
+// DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM (Unofficial QRIS Generator)
 const swaggerHTML = `
 <!DOCTYPE html>
 <html lang="en">
@@ -35,7 +35,7 @@ const swaggerHTML = `
 `;
 
 // ==================== SWAGGER JSON ====================
-// DIBUAT OLEH DRAGON STORE (Unofficial API)
+// DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM (Unofficial API)
 const swaggerJSON = {
   openapi: "3.0.0",
   info: {
@@ -183,23 +183,48 @@ const swaggerJSON = {
             "application/x-www-form-urlencoded": {
               schema: {
                 type: "object",
-                required: ["username", "token"],
+                required: ["USER_ORKUT", "TOKEN_ORKUT"],
                 properties: {
-                  username: { 
+                  USER_ORKUT: { 
                     type: "string", 
                     description: "Username Orkut",
-                    example: "08123456789" 
+                    example: "arivpnstore" 
                   },
-                  token: { 
+                  TOKEN_ORKUT: { 
                     type: "string", 
                     description: "Token akses (format: merchant_id:token)",
-                    example: "merchant_id:token_string" 
+                    example: "1540779:aRe0G9Els1AXIgUoOqPBfukV3y8cNvZL" 
                   },
                   jenis: { 
                     type: "string", 
-                    enum: ["masuk", "keluar"],
+                    enum: ["kredit", "debit"],
                     description: "Jenis transaksi (opsional, kosongkan untuk semua)",
-                    example: "masuk"
+                    example: "kredit"
+                  },
+                  page: {
+                    type: "string",
+                    description: "Halaman (opsional, default: 1)",
+                    example: "1"
+                  },
+                  dari_tanggal: {
+                    type: "string",
+                    description: "Tanggal awal filter (opsional)",
+                    example: ""
+                  },
+                  ke_tanggal: {
+                    type: "string",
+                    description: "Tanggal akhir filter (opsional)",
+                    example: ""
+                  },
+                  keterangan: {
+                    type: "string",
+                    description: "Filter keterangan (opsional)",
+                    example: ""
+                  },
+                  jumlah: {
+                    type: "string",
+                    description: "Filter jumlah (opsional)",
+                    example: ""
                   }
                 }
               }
@@ -222,11 +247,11 @@ const swaggerJSON = {
             "application/x-www-form-urlencoded": {
               schema: {
                 type: "object",
-                required: ["username", "token", "amount"],
+                required: ["USER_ORKUT", "TOKEN_ORKUT", "amount"],
                 properties: {
-                  username: { type: "string", example: "08123456789" },
-                  token: { type: "string", example: "merchant_id:token_string" },
-                  amount: { type: "string", example: "100000" }
+                  USER_ORKUT: { type: "string", example: "arivpnstore" },
+                  TOKEN_ORKUT: { type: "string", example: "1540779:aRe0G9Els1AXIgUoOqPBfukV3y8cNvZL" },
+                  amount: { type: "string", example: "1000" }
                 }
               }
             }
@@ -241,7 +266,7 @@ const swaggerJSON = {
   }
 };
 
-// DIBUAT OLEH DRAGON STORE (Unofficial QRIS Generator)
+// DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM (Unofficial QRIS Generator)
 function calculateCRC16(data) {
     let crc = 0xFFFF;
     for (let i = 0; i < data.length; i++) {
@@ -258,7 +283,7 @@ function calculateCRC16(data) {
     return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-// DIBUAT OLEH DRAGON STORE (Unofficial QRIS Generator)
+// DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM (Unofficial QRIS Generator)
 function generateQRString(baseQr, amount) {
     if (!baseQr || baseQr.length < 50) {
         throw new Error("QRIS string tidak valid");
@@ -316,16 +341,21 @@ const corsHeaders = {
 
 const API_BASE = "https://app.orderkuota.com/api/v2";
 const HEADERS_BASE = {
-  "User-Agent": "okhttp/4.12.0",
-  "Content-Type": "application/x-www-form-urlencoded"
+  "User-Agent": "okhttp/5.3.2",
+  "Content-Type": "application/x-www-form-urlencoded",
+  "X-Safe-Device": "TRUE"
 };
 const APP_PARAMS = {
-  app_version_name: "26.02.04",
-  app_version_code: "260204",
-  app_reg_id: "di309HvATsaiCppl5eDpoc:APA91bFUcTOH8h2XHdPRz2qQ5Bezn-3_TaycFcJ5pNLGWpmaxheQP9Ri0E56wLHz0_b1vcss55jbRQXZgc9loSfBdNa5nZJZVMlk7GS1JDMGyFUVvpcwXbMDg8tjKGZAurCGR4kDMDRJ"
+  app_version_name: "26.06.27",
+  app_version_code: "260627",
+  app_reg_id: "c0kJIbm4SA6gDFtD4C72Fc:APA91bGM94YX75ZlGfdAglNLgT5Igjpp-lTZbg8aDRSFRtIbMcAkkZpVuDE1JhV0xV2IAzLZedgb_TOvPIof-aWeyacmO6_9QbbnQxSDZSapLKtedM88QcU",
+  phone_uuid: "c0kJIbm4SA6gDFtD4C72Fc",
+  phone_model: "23108RN04Y",
+  phone_android_version: "15",
+  ui_mode: "light"
 };
 
-// QRIS Generator Unofficial API - DIBUAT OLEH DRAGON STORE
+// QRIS Generator Unofficial API - DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
@@ -457,7 +487,7 @@ export default {
                 return getQrisHistory(data);
             }
             if (path === "/api/orkut/qris-withdraw") {
-                return withdrawQris(data.username, data.token, data.amount);
+                return withdrawQris(data);
             }
         }
         
@@ -488,48 +518,68 @@ async function verifyOtp(username, otp) {
     return proxyRequest(`${API_BASE}/login`, payload);
 }
 
+async function generateSignature(token, timestamp, body) {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(token),
+        { name: "HMAC", hash: { name: "SHA-512" } },
+        false,
+        ["sign"]
+    );
+    const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(timestamp + body));
+    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function getQrisHistory(data) {
-    const { username, token, jenis = "" } = data;
+    const { USER_ORKUT, TOKEN_ORKUT, jenis = "", page = "1", dari_tanggal = "", ke_tanggal = "", keterangan = "", jumlah = "" } = data;
     
-    if (!username || !token) {
-        return new Response(JSON.stringify({ success: false, message: "username/token wajib diisi" }), {
+    if (!USER_ORKUT || !TOKEN_ORKUT) {
+        return new Response(JSON.stringify({ success: false, message: "USER_ORKUT/TOKEN_ORKUT wajib diisi" }), {
             status: 400,
             headers: { "Content-Type": "application/json" }
         });
     }
     
-    const merchantId = token.includes(":") ? token.split(":")[0] : "";
-    if (!merchantId) {
-        return new Response(JSON.stringify({ success: false, message: "token tidak valid" }), {
-            status: 400,
-            headers: { "Content-Type": "application/json" }
-        });
-    }
-    
+    const merchantId = TOKEN_ORKUT.split(":")[0];
     const ts = Date.now().toString();
     
-    const payload = new URLSearchParams({
-        auth_token: token,
-        auth_username: username,
-        "requests[qris_history][jumlah]": "",
-        "requests[qris_history][jenis]": jenis || "",
-        "requests[qris_history][page]": "1",
-        "requests[qris_history][dari_tanggal]": "",
-        "requests[qris_history][ke_tanggal]": "",
-        "requests[qris_history][keterangan]": "",
-        "requests[0]": "account",
-        request_time: ts,
-        ...APP_PARAMS
-    });
+    const payload = new URLSearchParams();
+    payload.append("app_reg_id", APP_PARAMS.app_reg_id);
+    payload.append("phone_uuid", APP_PARAMS.phone_uuid);
+    payload.append("requests[qris_history][jenis]", jenis);
+    payload.append("phone_model", APP_PARAMS.phone_model);
+    payload.append("requests[qris_history][keterangan]", keterangan);
+    payload.append("requests[qris_history][jumlah]", jumlah);
+    payload.append("request_time", ts);
+    payload.append("phone_android_version", APP_PARAMS.phone_android_version);
+    payload.append("app_version_code", APP_PARAMS.app_version_code);
+    payload.append("auth_username", USER_ORKUT);
+    payload.append("requests[qris_history][page]", page);
+    payload.append("auth_token", TOKEN_ORKUT);
+    payload.append("app_version_name", APP_PARAMS.app_version_name);
+    payload.append("ui_mode", APP_PARAMS.ui_mode);
+    payload.append("requests[qris_history][dari_tanggal]", dari_tanggal);
+    payload.append("requests[0]", "account");
+    payload.append("requests[qris_history][ke_tanggal]", ke_tanggal);
     
-    const headers = new Headers(HEADERS_BASE);
-    headers.set("timestamp", ts);
+    const bodyStr = payload.toString();
+    const signature = await generateSignature(TOKEN_ORKUT, ts, bodyStr);
+    
+    const headers = {
+        "Authorization": `Bearer ${btoa(TOKEN_ORKUT)}`,
+        "X-Safe-Device": "TRUE",
+        "Signature": signature,
+        "Timestamp": ts,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "okhttp/5.3.2"
+    };
     
     try {
         const resp = await fetch(`${API_BASE}/qris/mutasi/${merchantId}`, {
             method: "POST",
             headers,
-            body: payload
+            body: bodyStr
         });
         
         return new Response(resp.body, { 
@@ -545,9 +595,11 @@ async function getQrisHistory(data) {
     }
 }
 
-async function withdrawQris(username, token, amount) {
-    if (!username || !token) {
-        return new Response(JSON.stringify({ success: false, message: "username/token wajib diisi" }), {
+async function withdrawQris(data) {
+    const { USER_ORKUT, TOKEN_ORKUT, amount } = data;
+    
+    if (!USER_ORKUT || !TOKEN_ORKUT) {
+        return new Response(JSON.stringify({ success: false, message: "USER_ORKUT/TOKEN_ORKUT wajib diisi" }), {
             status: 400,
             headers: { "Content-Type": "application/json" }
         });
@@ -558,13 +610,52 @@ async function withdrawQris(username, token, amount) {
             headers: { "Content-Type": "application/json" }
         });
     }
-    const payload = new URLSearchParams({
-        auth_token: token,
-        auth_username: username,
-        "requests[qris_withdraw][amount]": amount,
-        ...APP_PARAMS
-    });
-    return proxyRequest(`${API_BASE}/get`, payload);
+    
+    const ts = Date.now().toString();
+    
+    const payload = new URLSearchParams();
+    payload.append("request_time", ts);
+    payload.append("app_reg_id", APP_PARAMS.app_reg_id);
+    payload.append("phone_android_version", APP_PARAMS.phone_android_version);
+    payload.append("app_version_code", APP_PARAMS.app_version_code);
+    payload.append("phone_uuid", APP_PARAMS.phone_uuid);
+    payload.append("auth_username", USER_ORKUT);
+    payload.append("requests[qris_withdraw][amount]", amount);
+    payload.append("auth_token", TOKEN_ORKUT);
+    payload.append("app_version_name", APP_PARAMS.app_version_name);
+    payload.append("ui_mode", APP_PARAMS.ui_mode);
+    payload.append("phone_model", APP_PARAMS.phone_model);
+    
+    const bodyStr = payload.toString();
+    const signature = await generateSignature(TOKEN_ORKUT, ts, bodyStr);
+    
+    const headers = {
+        "Authorization": `Bearer ${btoa(TOKEN_ORKUT)}`,
+        "X-Safe-Device": "TRUE",
+        "Signature": signature,
+        "Timestamp": ts,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "okhttp/5.3.2"
+    };
+    
+    try {
+        const resp = await fetch(`${API_BASE}/get`, {
+            method: "POST",
+            headers,
+            body: bodyStr
+        });
+        
+        return new Response(resp.body, { 
+            status: resp.status, 
+            headers: { "Content-Type": resp.headers.get("content-type") || "application/json" }
+        });
+        
+    } catch (err) {
+        return new Response(JSON.stringify({ success: false, message: "Fetch failed", error: err.message }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+        });
+    }
 }
 
 async function proxyRequest(url, payload) {
