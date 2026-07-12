@@ -1,4 +1,5 @@
-// DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM (Unofficial QRIS Generator)
+import { connect } from 'cloudflare:sockets';
+
 const swaggerHTML = `
 <!DOCTYPE html>
 <html lang="en">
@@ -34,8 +35,6 @@ const swaggerHTML = `
 </html>
 `;
 
-// ==================== SWAGGER JSON ====================
-// DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM (Unofficial API)
 const swaggerJSON = {
   openapi: "3.0.0",
   info: {
@@ -266,7 +265,6 @@ const swaggerJSON = {
   }
 };
 
-// DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM (Unofficial QRIS Generator)
 function calculateCRC16(data) {
     let crc = 0xFFFF;
     for (let i = 0; i < data.length; i++) {
@@ -283,7 +281,6 @@ function calculateCRC16(data) {
     return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
-// DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM (Unofficial QRIS Generator)
 function generateQRString(baseQr, amount) {
     if (!baseQr || baseQr.length < 50) {
         throw new Error("QRIS string tidak valid");
@@ -355,32 +352,185 @@ const APP_PARAMS = {
   ui_mode: "light"
 };
 
-// QRIS Generator Unofficial API - DIBUAT OLEH UPDATE BY PT RAJA SERVER PREMIUM
+// ==================== SOCKS5 PROXY ====================
+const PROXIES = [
+  { host: "103.93.163.73", port: 1080, user: "ari", pass: "vpn" },
+  { host: "103.93.132.115", port: 1080, user: "ari", pass: "vpn" },
+  { host: "103.103.23.200", port: 1080, user: "ari", pass: "vpn" },
+  { host: "103.58.100.18", port: 1080, user: "ari", pass: "vpn" },
+];
+
+let proxyIndex = 0;
+
+function getNextProxy() {
+  const p = PROXIES[proxyIndex % PROXIES.length];
+  proxyIndex++;
+  return p;
+}
+
+async function readExact(reader, length) {
+  const chunks = [];
+  let totalRead = 0;
+  while (totalRead < length) {
+    const { value, done } = await reader.read();
+    if (done) throw new Error("Connection closed");
+    chunks.push(value);
+    totalRead += value.length;
+  }
+  const result = new Uint8Array(totalRead);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result.slice(0, length);
+}
+
+async function doSocks5Handshake(socket, targetHost, targetPort, username, password) {
+  const writer = socket.writable.getWriter();
+  const reader = socket.readable.getReader();
+
+  try {
+    await writer.write(new Uint8Array([0x05, 0x02, 0x00, 0x02]));
+    const methodResp = await readExact(reader, 2);
+
+    if (methodResp[1] === 0x02) {
+      const userBytes = new TextEncoder().encode(username);
+      const passBytes = new TextEncoder().encode(password);
+      const authReq = new Uint8Array(3 + userBytes.length + passBytes.length);
+      authReq[0] = 0x01;
+      authReq[1] = userBytes.length;
+      authReq.set(userBytes, 2);
+      authReq[2 + userBytes.length] = passBytes.length;
+      authReq.set(passBytes, 3 + userBytes.length);
+      await writer.write(authReq);
+      const authResp = await readExact(reader, 2);
+      if (authResp[1] !== 0x00) throw new Error("SOCKS5 auth failed");
+    } else if (methodResp[1] !== 0x00) {
+      throw new Error("Unsupported SOCKS5 auth method: " + methodResp[1]);
+    }
+
+    const hostBytes = new TextEncoder().encode(targetHost);
+    const connectReq = new Uint8Array(7 + hostBytes.length);
+    connectReq[0] = 0x05;
+    connectReq[1] = 0x01;
+    connectReq[2] = 0x00;
+    connectReq[3] = 0x03;
+    connectReq[4] = hostBytes.length;
+    connectReq.set(hostBytes, 5);
+    connectReq[5 + hostBytes.length] = (targetPort >> 8) & 0xff;
+    connectReq[6 + hostBytes.length] = targetPort & 0xff;
+    await writer.write(connectReq);
+
+    const respHeader = await readExact(reader, 4);
+    if (respHeader[1] !== 0x00) {
+      throw new Error("SOCKS5 connect failed: " + respHeader[1]);
+    }
+
+    let extraLen = 0;
+    if (respHeader[3] === 0x01) {
+      extraLen = 4 + 2;
+    } else if (respHeader[3] === 0x03) {
+      const domainLen = (await readExact(reader, 1))[0];
+      extraLen = domainLen + 2;
+    } else if (respHeader[3] === 0x04) {
+      extraLen = 16 + 2;
+    }
+    if (extraLen > 0) await readExact(reader, extraLen);
+
+    writer.releaseLock();
+    reader.releaseLock();
+    return socket;
+  } catch (err) {
+    try { writer.releaseLock(); } catch(e) {}
+    try { reader.releaseLock(); } catch(e) {}
+    throw err;
+  }
+}
+
+async function fetchViaSocks5(url, fetchOptions = {}) {
+  const proxy = getNextProxy();
+  const target = new URL(url);
+  const targetPort = parseInt(target.port) || (target.protocol === "https:" ? 443 : 80);
+
+  try {
+    const socket = connect({ hostname: proxy.host, port: proxy.port });
+    await doSocks5Handshake(socket, target.hostname, targetPort, proxy.user, proxy.pass);
+
+    const body = fetchOptions.body ? String(fetchOptions.body) : "";
+    const method = fetchOptions.method || "POST";
+    const headers = fetchOptions.headers || {};
+
+    let req = method + " " + target.pathname + (target.search || "") + " HTTP/1.1\r\n";
+    req += "Host: " + target.hostname + "\r\n";
+    for (const [key, value] of Object.entries(headers)) {
+      req += key + ": " + value + "\r\n";
+    }
+    if (body) {
+      req += "Content-Length: " + new TextEncoder().encode(body).length + "\r\n";
+    }
+    req += "Connection: close\r\n\r\n";
+    req += body;
+
+    const writer = socket.writable.getWriter();
+    await writer.write(new TextEncoder().encode(req));
+
+    const reader = socket.readable.getReader();
+    const chunks = [];
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+
+    const totalLen = chunks.reduce((a, c) => a + c.length, 0);
+    const result = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const chunk of chunks) {
+      result.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    writer.releaseLock();
+    reader.releaseLock();
+
+    const respText = new TextDecoder().decode(result);
+    const headerEnd = respText.indexOf("\r\n\r\n");
+    const statusMatch = respText.match(/HTTP\/[\d.]+ (\d+)/);
+    const status = statusMatch ? parseInt(statusMatch[1]) : 500;
+    const bodyResp = headerEnd !== -1 ? respText.substring(headerEnd + 4) : respText;
+
+    return new Response(bodyResp, {
+      status,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (err) {
+    return fetch(url, fetchOptions);
+  }
+}
+
+// ==================== MAIN HANDLER ====================
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
         const path = url.pathname;
         
-        // Handle OPTIONS
         if (request.method === 'OPTIONS') {
             return new Response(null, { headers: corsHeaders });
         }
         
-        // Swagger UI
         if (request.method === "GET" && (path === "/" || path === "/docs" || path === "/swagger")) {
             return new Response(swaggerHTML, {
                 headers: { "Content-Type": "text/html; charset=UTF-8" }
             });
         }
         
-        // Swagger JSON
         if (request.method === "GET" && path === "/swagger.json") {
             return new Response(JSON.stringify(swaggerJSON), {
                 headers: { "Content-Type": "application/json", ...corsHeaders }
             });
         }
         
-        // ========== ENDPOINT UTAMA /api/qris ==========
         if (request.method === "GET" && path === "/api/qris") {
             try {
                 const qrisString = url.searchParams.get('qris_string');
@@ -464,7 +614,6 @@ export default {
             }
         }
         
-        // ========== ORKUT ENDPOINTS ==========
         if (request.method === "POST") {
             const contentType = request.headers.get("content-type") || "";
             let data = {};
@@ -476,7 +625,6 @@ export default {
                 data = Object.fromEntries(formData.entries());
             }
             
-            // Route ke handler yang sesuai
             if (path === "/api/orkut/login") {
                 return loginOrkut(data.username, data.password);
             }
@@ -576,7 +724,7 @@ async function getQrisHistory(data) {
     };
     
     try {
-        const resp = await fetch(`${API_BASE}/qris/mutasi/${merchantId}`, {
+        const resp = await fetchViaSocks5(`${API_BASE}/qris/mutasi/${merchantId}`, {
             method: "POST",
             headers,
             body: bodyStr
@@ -639,7 +787,7 @@ async function withdrawQris(data) {
     };
     
     try {
-        const resp = await fetch(`${API_BASE}/get`, {
+        const resp = await fetchViaSocks5(`${API_BASE}/get`, {
             method: "POST",
             headers,
             body: bodyStr
@@ -660,7 +808,7 @@ async function withdrawQris(data) {
 
 async function proxyRequest(url, payload) {
     try {
-        const response = await fetch(url, {
+        const response = await fetchViaSocks5(url, {
             method: "POST",
             headers: HEADERS_BASE,
             body: payload
