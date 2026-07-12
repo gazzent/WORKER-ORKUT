@@ -448,14 +448,20 @@ async function doSocks5Handshake(socket, targetHost, targetPort, username, passw
   }
 }
 
-async function fetchViaSocks5(url, fetchOptions = {}) {
+async function fetchViaProxy(url, fetchOptions = {}) {
   const proxy = getNextProxy();
   const target = new URL(url);
   const targetPort = parseInt(target.port) || (target.protocol === "https:" ? 443 : 80);
+  const isHttps = target.protocol === "https:";
 
   try {
-    const socket = connect({ hostname: proxy.host, port: proxy.port });
+    const socket = connect({ hostname: proxy.host, port: proxy.port, secureTransport: isHttps ? "starttls" : "off" });
     await doSocks5Handshake(socket, target.hostname, targetPort, proxy.user, proxy.pass);
+
+    let activeSocket = socket;
+    if (isHttps) {
+      activeSocket = socket.startTls({ servername: target.hostname });
+    }
 
     const body = fetchOptions.body ? String(fetchOptions.body) : "";
     const method = fetchOptions.method || "POST";
@@ -472,10 +478,10 @@ async function fetchViaSocks5(url, fetchOptions = {}) {
     req += "Connection: close\r\n\r\n";
     req += body;
 
-    const writer = socket.writable.getWriter();
+    const writer = activeSocket.writable.getWriter();
     await writer.write(new TextEncoder().encode(req));
 
-    const reader = socket.readable.getReader();
+    const reader = activeSocket.readable.getReader();
     const chunks = [];
     while (true) {
       const { value, done } = await reader.read();
@@ -505,6 +511,7 @@ async function fetchViaSocks5(url, fetchOptions = {}) {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
+    console.error("Proxy fetch failed, falling back to direct:", err.message);
     return fetch(url, fetchOptions);
   }
 }
@@ -724,7 +731,7 @@ async function getQrisHistory(data) {
     };
     
     try {
-        const resp = await fetchViaSocks5(`${API_BASE}/qris/mutasi/${merchantId}`, {
+        const resp = await fetchViaProxy(`${API_BASE}/qris/mutasi/${merchantId}`, {
             method: "POST",
             headers,
             body: bodyStr
@@ -787,7 +794,7 @@ async function withdrawQris(data) {
     };
     
     try {
-        const resp = await fetchViaSocks5(`${API_BASE}/get`, {
+        const resp = await fetchViaProxy(`${API_BASE}/get`, {
             method: "POST",
             headers,
             body: bodyStr
@@ -808,7 +815,7 @@ async function withdrawQris(data) {
 
 async function proxyRequest(url, payload) {
     try {
-        const response = await fetchViaSocks5(url, {
+        const response = await fetchViaProxy(url, {
             method: "POST",
             headers: HEADERS_BASE,
             body: payload
